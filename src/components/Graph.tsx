@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as echarts from 'echarts'
 import { motion } from 'framer-motion'
 
@@ -10,36 +10,41 @@ interface GraphProps {
 
 export const Graph: React.FC<GraphProps> = ({ data, metric, device }) => {
   const chartRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (chartRef.current) {
       const chart = echarts.init(chartRef.current)
 
-      const resizeObserver = new ResizeObserver(() => {
-        chart.resize();
-      });
-      resizeObserver.observe(chartRef.current);
-
+      
       const formatData = (inputData: any) => {
-        if (Array.isArray(inputData)) {
-          return inputData.map(item => ({
+        console.log('Data to format:', inputData) 
+        try {
+          return inputData.map((item: { [x: string]: any; date: any; Email: any; Direct: any }) => ({
             date: item.date || '',
-            value: typeof item.value === 'number' ? item.value : 0
+            Email: item.Email,
+            'Union Ads': item['Union Ads'],
+            'Video Ads': item['Video Ads'],
+            Direct: item.Direct,
+            'Search Engine': item['Search Engine']
           }))
-        } else if (typeof inputData === 'object') {
-          return Object.entries(inputData).map(([date, value]) => ({
-            date,
-            value: typeof value === 'number' ? value : 0
-          }))
+        } catch (err) {
+          console.error('Error formatting data:', err)
+          setError('Failed to format data')
+          return []
         }
-        return []
       }
 
       const formattedData = formatData(data)
 
+      if (formattedData.length === 0) {
+        setError('No valid data to display')
+        return
+      }
+
       const option = {
         title: {
-          text: metric,
+          text: `${metric} for ${device}`,
           left: 'center',
           top: 20,
           textStyle: {
@@ -49,73 +54,142 @@ export const Graph: React.FC<GraphProps> = ({ data, metric, device }) => {
         },
         tooltip: {
           trigger: 'axis',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderColor: '#ccc',
-          borderWidth: 1,
-          textStyle: {
-            color: '#333'
+          formatter: function (params: any) {
+            const dataPoint = params[0]
+            return `${dataPoint.name}<br/>${dataPoint.seriesName}: ${dataPoint.value.toFixed(2)}`
           }
         },
+        legend: {
+          data: ['Email', 'Union Ads', 'Video Ads', 'Direct', 'Search Engine']
+        },
         grid: {
-          left: '5%',
-          right: '5%',
-          bottom: '10%',
-          top: '15%',
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
           containLabel: true
+        },
+        toolbox: {
+          feature: {
+            saveAsImage: {}
+          }
         },
         xAxis: {
           type: 'category',
-          data: formattedData.map(item => item.date),
-          axisLine: {
-            lineStyle: {
-              color: '#ddd'
-            }
+          boundaryGap: false,
+          data: formattedData.map((item: { date: any }) => item.date),
+          axisLabel: {
+            rotate: 0, 
+            interval: 0 
           }
         },
         yAxis: {
-          type: 'value',
-          name: metric === 'LCP' ? 'Seconds' : 'Score',
-          splitLine: {
-            lineStyle: {
-              color: '#eee'
-            }
-          },
-          axisLine: {
-            lineStyle: {
-              color: '#ddd'
-            }
-          }
+          type: 'value'
         },
         series: [
           {
-            name: metric,
+            name: 'Email',
             type: 'line',
-            data: formattedData.map(item => item.value),
+            stack: 'Total',
+            data: formattedData.map((item: { Email: any }) => item.Email),
             smooth: true,
-            symbolSize: 6,
+            symbolSize: 8,
             lineStyle: {
-              width: 2,
-              color: '#2563eb'
+              width: 3,
+              color: '#3b82f6'
             },
             itemStyle: {
-              color: '#2563eb'
+              color: '#3b82f6'
+            }
+          },
+          {
+            name: 'Union Ads',
+            type: 'line',
+            stack: 'Total',
+            data: formattedData.map((item: { [x: string]: any }) => item['Union Ads']),
+            smooth: true,
+            symbolSize: 8,
+            lineStyle: {
+              width: 3,
+              color: '#10b981'
+            },
+            itemStyle: {
+              color: '#10b981'
+            }
+          },
+          {
+            name: 'Video Ads',
+            type: 'line',
+            stack: 'Total',
+            data: formattedData.map((item: { [x: string]: any }) => item['Video Ads']),
+            smooth: true,
+            symbolSize: 8,
+            lineStyle: {
+              width: 3,
+              color: '#fbbf24'
+            },
+            itemStyle: {
+              color: '#fbbf24'
+            }
+          },
+          {
+            name: 'Direct',
+            type: 'line',
+            stack: 'Total',
+            data: formattedData.map((item: { Direct: any }) => item.Direct),
+            smooth: true,
+            symbolSize: 8,
+            lineStyle: {
+              width: 3,
+              color: '#3b82f6'
+            },
+            itemStyle: {
+              color: '#3b82f6'
+            }
+          },
+          {
+            name: 'Search Engine',
+            type: 'line',
+            stack: 'Total',
+            data: formattedData.map((item: { [x: string]: any }) => item['Search Engine']),
+            smooth: true,
+            symbolSize: 8,
+            lineStyle: {
+              width: 3,
+              color: '#ef4444'
+            },
+            itemStyle: {
+              color: '#ef4444'
             }
           }
         ]
       }
 
-      chart.setOption(option)
+      try {
+        chart.setOption(option)
+      } catch (err) {
+        console.error('Error setting chart option:', err)
+        setError('Failed to render chart')
+      }
 
+      const handleResize = () => {
+        chart.resize()
+      }
+
+      window.addEventListener('resize', handleResize)
 
       return () => {
         chart.dispose()
-        resizeObserver.disconnect();
+        window.removeEventListener('resize', handleResize)
       }
     }
   }, [data, metric, device])
 
-  if (!data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)) {
-    return <div className="text-center text-gray-500">No data available</div>
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-center h-[400px]">
+        <p className="text-red-500 text-center">{error}</p>
+      </div>
+    )
   }
 
   return (
@@ -129,4 +203,3 @@ export const Graph: React.FC<GraphProps> = ({ data, metric, device }) => {
     </motion.div>
   )
 }
-

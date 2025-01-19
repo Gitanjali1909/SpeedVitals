@@ -17,15 +17,23 @@ const App = () => {
       setLoading(true)
       setError(null)
       try {
-        const response = await axios.get(`https://example-metrics.speedvitals.workers.dev/?metric=${metric}&device=${device}`)
-        if (response.data && (Array.isArray(response.data) || typeof response.data === 'object')) {
-          setData(response.data)
-        } else {
-          throw new Error('Invalid data format received from API')
-        }
+        
+        const simulatedData = Array.from({ length: 7 }, (_, i) => ({
+          date: `200${i + 1}`,
+          Email: Math.random() * 1000,
+          'Union Ads': Math.random() * 1000,
+          'Video Ads': Math.random() * 1000,
+          Direct: Math.random() * 1000,
+          'Search Engine': Math.random() * 1000
+        }))
+
+        
+        
+        setData(simulatedData) 
       } catch (err) {
-        setError('Failed to fetch data')
-        console.error(err)
+        console.error('Error fetching data:', err)
+        setError('Failed to fetch data. Please try again later.')
+        setData(null)
       } finally {
         setLoading(false)
       }
@@ -35,9 +43,9 @@ const App = () => {
   }, [metric, device])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 min-h-screen">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -71,9 +79,11 @@ const App = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center text-red-500"
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
             >
-              {error}
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
             </motion.div>
           )}
           {!loading && !error && data && (
@@ -88,4 +98,3 @@ const App = () => {
 }
 
 export default App
-
